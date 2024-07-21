@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "Jellyfull"
+version = "0.1.0"
+description = "Jellyfull is a Python module to help you getting metadata for Jellyfin"
+authors = [
+	"momo <momo_@toke.com>"
+]
+readme = "README.md"
+license = "Apache-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.26.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
