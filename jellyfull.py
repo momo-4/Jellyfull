@@ -6,13 +6,15 @@ import retriever
 
 
 def main():
-    mode_ = input("请输入媒体的类型 \n（仅支持输入电影、连续剧或电视单季）\n")
+    mode_ = input(
+        "请输入媒体的类型:\n"
+        "1 - 电影\n2 - 连续剧\n3 - 电视单季\n")
     match mode_:
-        case '电影':
+        case "1":
             mode_ = 'movie'
-        case '连续剧':
+        case "2":
             mode_ = 'tvshow'
-        case '电视单季':
+        case "3":
             mode_ = 'season'
         case _:
             raise ValueError(f"Mode {mode_} is not supported.")
@@ -26,8 +28,12 @@ def main():
 
     root = tk.Tk()
     root.withdraw()
-
-    file = filedialog.askdirectory()
+    if mode_ == 'movie':
+        file = filedialog.askopenfilename()
+    elif mode_ == 'tvshow' or mode_ == 'season':
+        file = filedialog.askdirectory()
+    else:
+        raise ValueError(f"Mode {mode_} is not supported.")
 
     m = maker.NfoMaker(file)
     print(f"处理地址为 {file}")
