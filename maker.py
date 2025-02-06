@@ -105,7 +105,8 @@ class NfoMaker:
                 meta_data['genre'].append(genre)
 
         if mode == 'season':
-            meta_data['seasonnumber'] = str(data['season_number'])
+            if 'season_number' in data:
+                meta_data['seasonnumber'] = str(data['season_number'])
 
         self.metadata = meta_data
 
