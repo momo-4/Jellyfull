@@ -1,0 +1,13 @@
+# IDE and Python related files to ignore
+.idea/
+__pycache__/
+.vscode/
+*.pyc
+.venv/
+
+# Local files to ignore
+local/
+
+# Cache files to ignore
+.mypy_cache/
+.ruff_cache/

@@ -2,17 +2,18 @@ import requests
 
 
 class NeoDBRetriever:
-
     def __init__(self):
         self._api = {
-            'from_url': r'https://neodb.social/api/catalog/fetch',
-            'tv': r'https://neodb.social/api/tv/',
-            'movie': r'https://neodb.social/api/movie/'
+            "from_url": r"https://neodb.social/api/catalog/fetch",
+            "tv": r"https://neodb.social/api/tv/",
+            "movie": r"https://neodb.social/api/movie/",
         }
-        self._support_mode = ['movie', 'tv']
+        self._support_mode = ["movie", "tv"]
         self._headers = {
-            'User-Agent': ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                           '(KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'),
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
+            ),
         }
 
     def retrieve_from_url(self, url: str) -> dict:
@@ -24,10 +25,8 @@ class NeoDBRetriever:
         Returns:
             dict, data of NeoDB's retrieval
         """
-        params = {
-            'url': url
-        }
-        data = requests.get(self._api['from_url'], params=params, headers=self._headers)
+        params = {"url": url}
+        data = requests.get(self._api["from_url"], params=params, headers=self._headers)
         if data.ok:
             return data.json()
         else:
@@ -49,3 +48,4 @@ class NeoDBRetriever:
         data = requests.get(url, headers=self._headers)
         if data.ok:
             return data.json()
+        raise ValueError(f"Failed to retrieve data from {url}")
