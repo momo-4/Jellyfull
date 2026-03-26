@@ -4,20 +4,42 @@ import xml.etree.ElementTree as ET
 
 
 def _load_language_map():
-    rows = open(os.path.join(os.path.dirname(__file__), "iso639-1.tsv"), encoding="utf-8").read().splitlines()[1:]
-    return {r[0].lower(): r[1] for line in rows if len(r := line.split("\t", 2)) >= 2 and r[1] not in ("", "-")}
+    rows = (
+        open(os.path.join(os.path.dirname(__file__), "iso639-1.tsv"), encoding="utf-8")
+        .read()
+        .splitlines()[1:]
+    )
+    return {
+        r[0].lower(): r[1]
+        for line in rows
+        if len(r := line.split("\t", 2)) >= 2 and r[1] not in ("", "-")
+    }
 
 
 class NfoMaker:
     _language_map: dict[str, str] = _load_language_map()
     _GENRE_MAP: dict[str, str] = {
-        "Drama": "剧情", "Romance": "爱情", "Comedy": "喜剧",
-        "Action": "动作", "Thriller": "惊悚", "Horror": "恐怖",
-        "Crime": "犯罪", "Adventure": "冒险", "Science Fiction": "科幻",
-        "Fantasy": "奇幻", "Mystery": "悬疑", "Family": "家庭",
-        "Animation": "动画", "Music": "音乐", "History": "历史",
-        "War": "战争", "Documentary": "纪录", "Western": "西部",
-        "TV Movie": "电视电影", "Biography": "传记", "Sport": "体育",
+        "Drama": "剧情",
+        "Romance": "爱情",
+        "Comedy": "喜剧",
+        "Action": "动作",
+        "Thriller": "惊悚",
+        "Horror": "恐怖",
+        "Crime": "犯罪",
+        "Adventure": "冒险",
+        "Science Fiction": "科幻",
+        "Fantasy": "奇幻",
+        "Mystery": "悬疑",
+        "Family": "家庭",
+        "Animation": "动画",
+        "Music": "音乐",
+        "History": "历史",
+        "War": "战争",
+        "Documentary": "纪录",
+        "Western": "西部",
+        "TV Movie": "电视电影",
+        "Biography": "传记",
+        "Sport": "体育",
         "Musical": "音乐剧",
     }
 
@@ -56,8 +78,13 @@ class NfoMaker:
             "year": year,
             "premiered": year + "-01-01",
             "releasedate": year + "-01-01",
-            "genre": [cn for g in data["genre"] if (cn := self._convert_genre(g)) is not None],
-            "tag": [self._language_map.get(lang.strip().lower(), lang) for lang in data.get("language", [])],
+            "genre": [
+                cn for g in data["genre"] if (cn := self._convert_genre(g)) is not None
+            ],
+            "tag": [
+                self._language_map.get(lang.strip().lower(), lang)
+                for lang in data.get("language", [])
+            ],
             "actors": data["actor"],
             "imdbid": data.get("imdb"),
         }
@@ -66,7 +93,9 @@ class NfoMaker:
             meta_data["season"] = "-1"
             meta_data["episode"] = "-1"
         elif mode == "season":
-            meta_data["seasonnumber"] = str(data["season_number"]) if "season_number" in data else None
+            meta_data["seasonnumber"] = (
+                str(data["season_number"]) if "season_number" in data else None
+            )
             meta_data["episode"] = "-1"
 
         self.metadata = meta_data
@@ -108,7 +137,11 @@ class NfoMaker:
             ET.SubElement(root, "seasonnumber").text = data["seasonnumber"]
 
         ET.indent(root, space="  ")
-        self.nfo = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n' + ET.tostring(root, encoding="unicode") + "\n"
+        self.nfo = (
+            '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n'
+            + ET.tostring(root, encoding="unicode")
+            + "\n"
+        )
         return self.nfo
 
     def save(self):
@@ -124,5 +157,3 @@ class NfoMaker:
     @classmethod
     def _convert_genre(cls, genre: str) -> str | None:
         return cls._GENRE_MAP.get(genre)
-
-
