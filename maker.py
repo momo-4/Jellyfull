@@ -2,7 +2,14 @@ import os
 import time
 
 
+def _load_language_map():
+    rows = open(os.path.join(os.path.dirname(__file__), "iso639-1.tsv"), encoding="utf-8").read().splitlines()[1:]
+    return {r[0].lower(): r[1] for line in rows if len(r := line.split("\t", 2)) >= 2 and r[1] not in ("", "-")}
+
+
 class NfoMaker:
+    _language_map: dict[str, str] = _load_language_map()
+
     def __init__(self, file: str):
         self._template: dict = {
             "movie": {
@@ -96,12 +103,13 @@ class NfoMaker:
         meta_data["year"] = str(data["year"])
         meta_data["premiered"] = str(data["year"]) + "-01-01"
         meta_data["releasedate"] = str(data["year"]) + "-01-01"
-        meta_data["tag"] = data["language"]
+        meta_data["tag"] = [self._language_map.get(lang.strip().lower(), lang) for lang in data.get("language", [])]
         meta_data["actors"] = data["actor"]
         try:
             meta_data["imdbid"] = data["imdb"]
         except KeyError:
             pass
+        meta_data["genre"] = []
         for genre in data["genre"]:
             genre = self._convert_genre(genre)
             if genre is not None:
@@ -214,3 +222,5 @@ class NfoMaker:
             case _:
                 return None
         return genre
+
+
