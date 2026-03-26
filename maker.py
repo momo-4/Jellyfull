@@ -1,5 +1,6 @@
 import os
 import time
+import xml.etree.ElementTree as ET
 
 
 def _load_language_map():
@@ -9,157 +10,105 @@ def _load_language_map():
 
 class NfoMaker:
     _language_map: dict[str, str] = _load_language_map()
+    _GENRE_MAP: dict[str, str] = {
+        "Drama": "剧情", "Romance": "爱情", "Comedy": "喜剧",
+        "Action": "动作", "Thriller": "惊悚", "Horror": "恐怖",
+        "Crime": "犯罪", "Adventure": "冒险", "Science Fiction": "科幻",
+        "Fantasy": "奇幻", "Mystery": "悬疑", "Family": "家庭",
+        "Animation": "动画", "Music": "音乐", "History": "历史",
+        "War": "战争", "Documentary": "纪录", "Western": "西部",
+        "TV Movie": "电视电影", "Biography": "传记", "Sport": "体育",
+        "Musical": "音乐剧",
+    }
 
     def __init__(self, file: str):
-        self._template: dict = {
-            "movie": {
-                "mode": "movie",
-                "folder": os.path.abspath(os.path.dirname(file)),
-                "file_name": os.path.splitext(os.path.basename(os.path.abspath(file)))[
-                    0
-                ],
-                "plot": None,
-                "lockdata": "true",
-                "dateadded": None,
-                "title": None,
-                "originaltitle": None,
-                "sorttitle": [],
-                "director": [],
-                "writer": [],
-                "rating": None,
-                "year": None,
-                "premiered": None,
-                "releasedate": None,
-                "genre": [],
-                "tag": [],
-                "actors": [],
-                "imdbid": None,
-            },
-            "tvshow": {
-                "mode": "tvshow",
-                "folder": os.path.abspath(file),
-                "file_name": "tvshow",
-                "plot": None,
-                "lockdata": "true",
-                "dateadded": None,
-                "title": None,
-                "originaltitle": None,
-                "sorttitle": [],
-                "director": [],
-                "writer": [],
-                "rating": None,
-                "year": None,
-                "premiered": None,
-                "releasedate": None,
-                "genre": [],
-                "tag": [],
-                "actors": [],
-                "imdbid": None,
-                "season": "-1",
-                "episode": "-1",
-            },
-            "season": {
-                "mode": "season",
-                "folder": os.path.abspath(file),
-                "file_name": "season",
-                "plot": None,
-                "lockdata": "true",
-                "dateadded": None,
-                "title": None,
-                "originaltitle": None,
-                "sorttitle": [],
-                "director": [],
-                "writer": [],
-                "rating": None,
-                "year": None,
-                "premiered": None,
-                "releasedate": None,
-                "genre": [],
-                "tag": [],
-                "actors": [],
-                "imdbid": None,
-                "seasonnumber": None,
-                "episode": "-1",
-            },
-        }
+        self._file = file
         self.metadata = None
         self.nfo = None
 
     def parse_from_neodb(self, data: dict, mode: str):
-        if mode not in self._template:
+        _VALID_MODES = {"movie", "tvshow", "season"}
+        if mode not in _VALID_MODES:
             raise ValueError(f"Mode {mode} is not supported.")
 
-        meta_data = self._template[mode]
-        meta_data["plot"] = data["description"]
-        meta_data["dateadded"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        meta_data["title"] = data["title"]
-        meta_data["originaltitle"] = data["orig_title"]
-        meta_data["sorttitle"] = " / ".join(
-            [i["text"] for i in data["localized_title"]]
-        )
-        meta_data["director"] = data["director"]
-        meta_data["writer"] = data["playwright"]
-        meta_data["rating"] = data["rating"]
-        meta_data["year"] = str(data["year"])
-        meta_data["premiered"] = str(data["year"]) + "-01-01"
-        meta_data["releasedate"] = str(data["year"]) + "-01-01"
-        meta_data["tag"] = [self._language_map.get(lang.strip().lower(), lang) for lang in data.get("language", [])]
-        meta_data["actors"] = data["actor"]
-        try:
-            meta_data["imdbid"] = data["imdb"]
-        except KeyError:
-            pass
-        meta_data["genre"] = []
-        for genre in data["genre"]:
-            genre = self._convert_genre(genre)
-            if genre is not None:
-                meta_data["genre"].append(genre)
+        file = self._file
+        if mode == "movie":
+            folder = os.path.abspath(os.path.dirname(file))
+            file_name = os.path.splitext(os.path.basename(os.path.abspath(file)))[0]
+        else:
+            folder = os.path.abspath(file)
+            file_name = mode
 
-        if mode == "season":
-            if "season_number" in data:
-                meta_data["seasonnumber"] = str(data["season_number"])
+        year = str(data["year"])
+        meta_data = {
+            "mode": mode,
+            "folder": folder,
+            "file_name": file_name,
+            "plot": data["description"],
+            "lockdata": "true",
+            "dateadded": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            "title": data["title"],
+            "originaltitle": data["orig_title"],
+            "sorttitle": " / ".join(i["text"] for i in data["localized_title"]),
+            "director": data["director"],
+            "writer": data["playwright"],
+            "rating": data["rating"],
+            "year": year,
+            "premiered": year + "-01-01",
+            "releasedate": year + "-01-01",
+            "genre": [cn for g in data["genre"] if (cn := self._convert_genre(g)) is not None],
+            "tag": [self._language_map.get(lang.strip().lower(), lang) for lang in data.get("language", [])],
+            "actors": data["actor"],
+            "imdbid": data.get("imdb"),
+        }
+
+        if mode == "tvshow":
+            meta_data["season"] = "-1"
+            meta_data["episode"] = "-1"
+        elif mode == "season":
+            meta_data["seasonnumber"] = str(data["season_number"]) if "season_number" in data else None
+            meta_data["episode"] = "-1"
 
         self.metadata = meta_data
-
         return self.metadata
 
     def make(self):
         if self.metadata is None:
             raise ValueError("No metadata found.")
         data = self.metadata
-        nfo = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n'
-        nfo += f"<{data['mode']}>\n"
-        nfo += f"  <plot>{data['plot']}</plot>\n"
-        nfo += f"  <lockdata>{data['lockdata']}</lockdata>\n"
-        nfo += f"  <dateadded>{data['dateadded']}</dateadded>\n"
-        nfo += f"  <title>{data['title']}</title>\n"
-        nfo += f"  <originaltitle>{data['originaltitle']}</originaltitle>\n"
-        nfo += f"  <sorttitle>{data['sorttitle']}</sorttitle>\n"
-        for director in data["director"]:
-            nfo += f"  <director>{director}</director>\n"
-        for writer in data["writer"]:
-            nfo += f"  <writer>{writer}</writer>\n"
-            nfo += f"  <credits>{writer}</credits>\n"
-        nfo += f"  <rating>{data['rating']}</rating>\n"
-        nfo += f"  <year>{data['year']}</year>\n"
-        nfo += f"  <premiered>{data['premiered']}</premiered>\n"
-        nfo += f"  <releasedate>{data['releasedate']}</releasedate>\n"
-        for genre in data["genre"]:
-            nfo += f"  <genre>{genre}</genre>\n"
-        for tag in data["tag"]:
-            nfo += f"  <tag>{tag}</tag>\n"
-        for actor in data["actors"]:
-            nfo += "  <actor>\n"
-            nfo += f"    <name>{actor}</name>\n"
-            nfo += "    <type>Actor</type>\n"
-            nfo += "  </actor>\n"
-        if data["imdbid"] is not None:
-            nfo += f"  <imdbid>{data['imdbid']}</imdbid>\n"
-        if data["mode"] == "season":
-            nfo += f"  <seasonnumber>{data['seasonnumber']}</seasonnumber>\n"
-        nfo += f"</{data['mode']}>\n"
+        root = ET.Element(data["mode"])
 
-        self.nfo = nfo
+        ET.SubElement(root, "plot").text = data["plot"]
+        ET.SubElement(root, "lockdata").text = data["lockdata"]
+        ET.SubElement(root, "dateadded").text = data["dateadded"]
+        ET.SubElement(root, "title").text = data["title"]
+        ET.SubElement(root, "originaltitle").text = data["originaltitle"]
+        ET.SubElement(root, "year").text = data["year"]
+        ET.SubElement(root, "sorttitle").text = data["sorttitle"]
+        if data["imdbid"] is not None:
+            ET.SubElement(root, "imdbid").text = data["imdbid"]
+        ET.SubElement(root, "premiered").text = data["premiered"]
+        ET.SubElement(root, "releasedate").text = data["releasedate"]
+        for genre in data["genre"]:
+            ET.SubElement(root, "genre").text = genre
+        for tag in data["tag"]:
+            ET.SubElement(root, "tag").text = tag
+        for director in data["director"]:
+            ET.SubElement(root, "director").text = director
+        for writer in data["writer"]:
+            ET.SubElement(root, "writer").text = writer
+            ET.SubElement(root, "credits").text = writer
+        ET.SubElement(root, "rating").text = str(data["rating"])
+        for actor in data["actors"]:
+            actor_el = ET.SubElement(root, "actor")
+            ET.SubElement(actor_el, "name").text = actor
+            ET.SubElement(actor_el, "type").text = "Actor"
+
+        if data["mode"] == "season" and data["seasonnumber"] is not None:
+            ET.SubElement(root, "seasonnumber").text = data["seasonnumber"]
+
+        ET.indent(root, space="  ")
+        self.nfo = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n' + ET.tostring(root, encoding="unicode") + "\n"
         return self.nfo
 
     def save(self):
@@ -172,55 +121,8 @@ class NfoMaker:
         ) as f:
             f.write(self.nfo)
 
-    @staticmethod
-    def _convert_genre(genre):
-        match genre:
-            case "Drama":
-                genre = "剧情"
-            case "Romance":
-                genre = "爱情"
-            case "Comedy":
-                genre = "喜剧"
-            case "Action":
-                genre = "动作"
-            case "Thriller":
-                genre = "惊悚"
-            case "Horror":
-                genre = "恐怖"
-            case "Crime":
-                genre = "犯罪"
-            case "Adventure":
-                genre = "冒险"
-            case "Science Fiction":
-                genre = "科幻"
-            case "Fantasy":
-                genre = "奇幻"
-            case "Mystery":
-                genre = "悬疑"
-            case "Family":
-                genre = "家庭"
-            case "Animation":
-                genre = "动画"
-            case "Music":
-                genre = "音乐"
-            case "History":
-                genre = "历史"
-            case "War":
-                genre = "战争"
-            case "Documentary":
-                genre = "纪录"
-            case "Western":
-                genre = "西部"
-            case "TV Movie":
-                genre = "电视电影"
-            case "Biography":
-                genre = "传记"
-            case "Sport":
-                genre = "体育"
-            case "Musical":
-                genre = "音乐剧"
-            case _:
-                return None
-        return genre
+    @classmethod
+    def _convert_genre(cls, genre: str) -> str | None:
+        return cls._GENRE_MAP.get(genre)
 
 
