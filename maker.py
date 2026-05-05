@@ -156,4 +156,4 @@ class NfoMaker:
 
     @classmethod
     def _convert_genre(cls, genre: str) -> str | None:
-        return cls._GENRE_MAP.get(genre)
+        return cls._GENRE_MAP.get(genre.capitalize())
